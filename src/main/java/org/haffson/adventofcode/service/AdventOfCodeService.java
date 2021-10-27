@@ -4,10 +4,10 @@ import org.haffson.adventofcode.ProblemStatusEnum;
 import org.haffson.adventofcode.controller.AdventOfCodeController;
 import org.haffson.adventofcode.days.Days;
 import org.haffson.adventofcode.exceptions.PuzzleNotSolvedYetException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,16 +21,17 @@ import java.util.Objects;
 @Component
 public class AdventOfCodeService {
 
-    /** A list containing all {@link Days} from the corresponding subpackages. */
+    /**
+     * A list containing all {@link Days} from the corresponding subpackages.
+     */
     private final List<Days> daysSolutions;
-
 
     /**
      * {@code @Autowired} constructor adding all implemented {@link Days} to the list of Days.
      *
      * @param daysSolutions {@code @Autowired} days solutions
      */
-    @Autowired
+
     public AdventOfCodeService(List<Days> daysSolutions) {
         this.daysSolutions = Objects.requireNonNull(daysSolutions);
     }
@@ -39,7 +40,7 @@ public class AdventOfCodeService {
      * Asks for the implementation for the requested day and then checks whether the requested part
      * has been solved yet. Then it requests the retrieved implementation to calculate the solution.
      *
-     * @param day the simple day of the advent calendar to be solved
+     * @param day  the simple day of the advent calendar to be solved
      * @param part the part of the puzzle for that day
      * @return a {@code String} with the result for the puzzle, or in case it has not been implemented,
      * an {@link PuzzleNotSolvedYetException} is thrown.
@@ -53,9 +54,9 @@ public class AdventOfCodeService {
         Days thisDaysClass = findDayForDay(day);
         if (!isProblemSolvedForPart(thisDaysClass, part)) {
             throw new PuzzleNotSolvedYetException(new Throwable());
-        } else if (Objects.equals(part,1)) {
+        } else if (Objects.equals(part, 1)) {
             return thisDaysClass.firstPart();
-        } else if (Objects.equals(part,2)) {
+        } else if (Objects.equals(part, 2)) {
             return thisDaysClass.secondPart();
         } else {
             return "This puzzle has not been solved yet.";
@@ -66,7 +67,7 @@ public class AdventOfCodeService {
      * Checks whether the corresponding part to a day has already been solved.
      *
      * @param thisDaysClass the implementation for the requested day
-     * @param part the part to check for it's solution status
+     * @param part          the part to check for it's solution status
      * @return if the part has been solved for a specific day
      */
     private boolean isProblemSolvedForPart(Days thisDaysClass, Integer part) {
@@ -90,9 +91,23 @@ public class AdventOfCodeService {
     /**
      * Getter for {@code daysSolutions}
      *
-     * @return a List of all implemented days
+     * @return a sorted (by day!) List of all implemented days
      */
     public List<Days> getDaysSolutions() {
+        Comparator<Days> dayComparator = new DayComparator();
+        daysSolutions.sort(dayComparator);
         return daysSolutions;
+    }
+
+    /**
+     * creation of a Comparator to use the getDay() method of Days to sort the day instances:
+     */
+    @Component
+    public static class DayComparator implements Comparator<Days> {
+
+        @Override
+        public int compare(Days day1, Days day2) {
+            return Integer.compare(day1.getDay(), day2.getDay());
+        }
     }
 }

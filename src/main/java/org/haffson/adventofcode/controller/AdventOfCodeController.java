@@ -4,19 +4,20 @@ import org.haffson.adventofcode.days.Days;
 import org.haffson.adventofcode.service.AdventOfCodeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.Resources;
-import org.springframework.http.MediaType;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.Link;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 
 /**
  * The main REST controller for the <i>Advent Of Code 2018</i> Application.
@@ -25,78 +26,94 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
  * @author Michelle Fernandez Bieber
  */
 @RestController
-@RequestMapping(value = "/api/adventOfCode", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+@RequestMapping(value = "/api/adventOfCode")
 public class AdventOfCodeController {
 
-    /** Adds a logger to the controller */
+    /**
+     * Adds a logger to the controller
+     */
     private static final Logger logger = LoggerFactory.getLogger(AdventOfCodeController.class);
 
-    /** Implements the {@link AdventOfCodeService}. */
-    private AdventOfCodeService adventOfCodeService;
+    /**
+     * Implements the {@link AdventOfCodeService}.
+     */
+    private final AdventOfCodeService adventOfCodeService;
 
     /**
      * {@code @Autowired} constructor of this controller.
      *
      * @param adventOfCodeService {@code @Autowired} adventOfCodeService
      */
-    @Autowired
     public AdventOfCodeController(AdventOfCodeService adventOfCodeService) {
         this.adventOfCodeService = adventOfCodeService;
     }
 
     /**
-     * Handles a GET-Request with the day of the advent calendar and the part to be solved and returns a HATEOAS
-     * {@code Resource<>} with the corresponding solution.
-     *
-     * @param day the simple day of the advent calendar to be solved
-     * @param part the part of the puzzle for that day
-     * @return a HATEOAS-{@code Resource<>} with the corresponding solution
+     * EntityModel<String> no longer writable:
+     * DayModel() is wrapper class for String answer
      */
-    @GetMapping
-    public Resource getResultForASpecificDayAndPuzzlePart(@RequestParam(value = "day", defaultValue = "1") Integer day,
-                                                          @RequestParam(value = "part", defaultValue = "1") Integer part){
+    private static class DayModel {
+        private final Integer day;
+        private final Integer part;
+        private final String answer;
 
-        logger.info("The results for day " + day + ", part " + part + " have been requested.");
+        public DayModel(Integer day, Integer part, String answer) {
+            this.day = day;
+            this.part = part;
+            this.answer = answer;
+        }
 
-        return new Resource<>(
-                adventOfCodeService.getResultsForASpecificDayAndPuzzlePart(day, part),
-                linkTo(methodOn(AdventOfCodeController.class).getResultForASpecificDayAndPuzzlePart(day, part)).withSelfRel()
-        );
+        public Integer getDay() {
+            return day;
+        }
+
+        public Integer getPart() {
+            return part;
+        }
+
+        public String getAnswer() {
+            return answer;
+        }
     }
 
     /**
-     * Returns a HATEOAS {@code Resources<>} with an integer list of all days that have been implemented
+     * Handles a GET-Request with the day of the advent calendar and the part to be solved and returns a HATEOAS
+     * {@code EntityModel<>} with the corresponding solution.
+     * <p>
+     * //     * @param day  the simple day of the advent calendar to be solved
+     * //     * @param part the part of the puzzle for that day
      *
-     * @return a HATEOAS-{@code Resources<>} with an integer list of all days that have been implemented
+     * @return a HATEOAS-{@code EntityModel<>} with the corresponding solution
+     */
+    @GetMapping(value = "/")
+    public EntityModel<DayModel> getResultForASpecificDayAndPuzzlePart(@RequestParam(value = "day", defaultValue = "1") Integer day,
+                                                                       @RequestParam(value = "part", defaultValue = "1") Integer part) {
+
+        logger.info("The results for day {}, part {} have been requested.", day, part);
+
+        String answer = adventOfCodeService.getResultsForASpecificDayAndPuzzlePart(day, part);
+        Link link = linkTo(methodOn(AdventOfCodeController.class).getResultForASpecificDayAndPuzzlePart(day, part)).withSelfRel();
+        DayModel dayModel = new DayModel(day, part, answer);
+        return EntityModel.of(dayModel, link);
+    }
+
+
+
+    /**
+     * Returns a HATEOAS {@code CollectionModel<>} with an integer list of all days that have been implemented
+     *
+     * @return a HATEOAS-{@code CollectionModel<>} with an integer list of all days that have been implemented
      */
     @GetMapping("/daysimplemented")
-    public Resources daysImplemented() {
+    public CollectionModel<Integer> daysImplemented() {
 
-        logger.info("A list of implemented days has been requested.");
+        logger.info("A list of implemented days (sorted) has been requested.");
 
-        return new Resources<>(
-                adventOfCodeService.getDaysSolutions().stream()
-                        .map(Days::getDay)
-                        .sorted()
-                        .collect(Collectors.toList()),
-                linkTo(methodOn(AdventOfCodeController.class).daysImplemented()).withSelfRel()
-        );
+        List<Integer> daysImplemented = adventOfCodeService.getDaysSolutions().stream()
+                .map(Days::getDay)
+                .collect(Collectors.toList());
+        Link link = linkTo(methodOn(AdventOfCodeController.class).daysImplemented()).withSelfRel();
+
+        return CollectionModel.of(daysImplemented, link);
     }
-
-        @GetMapping("/test")
-        public String test () {
-
-            logger.info("A list of implemented days has been requested.");
-
-            return "Hallo";
-        }
-
-    @GetMapping("/test11")
-    public String test11 () {
-
-        logger.info("A list of implemented days has been requested.");
-
-        return "Hallo11";
-    }
-
 }
